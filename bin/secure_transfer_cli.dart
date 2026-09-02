@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:qr/qr.dart';
 import 'package:secure_lan_transfer/core/crypto/sas_authenticator.dart';
 import 'package:secure_lan_transfer/core/discovery/discovery_manager.dart';
 import 'package:secure_lan_transfer/core/discovery/manual_connection.dart';
@@ -136,8 +137,13 @@ void printCyberBanner({
   String? mode,
   String? detail,
   CliContext? ctx,
+  bool clear = true,
 }) {
   if (ctx != null && (ctx.json || ctx.quiet)) return;
+
+  if (clear && stdout.hasTerminal) {
+    stdout.write('\x1B[2J\x1B[0;0H');
+  }
 
   final hasAnsi = stdout.hasTerminal;
   final c1 = hasAnsi ? AnsiStyles.brightCyan : '';
@@ -557,6 +563,47 @@ void _printSuccessBox({
   stdout.writeln('  $c2└─────────────────────────────────────────────────────────────┘$reset');
 }
 
+/// Renders an ANSI high-contrast QR code for instant camera scanning off terminal.
+String renderTerminalQrCode(String data) {
+  try {
+    final qrCode = QrCode.fromData(
+      data: data,
+      errorCorrectLevel: QrErrorCorrectLevel.M,
+    );
+    final qrImage = QrImage(qrCode);
+    final moduleCount = qrImage.moduleCount;
+
+    final buffer = StringBuffer();
+    const quietZone = 2;
+
+    for (int y = -quietZone; y < moduleCount + quietZone; y += 2) {
+      buffer.write('      \x1B[47m\x1B[30m'); // White background, black foreground
+      for (int x = -quietZone; x < moduleCount + quietZone; x++) {
+        final top = (x >= 0 && x < moduleCount && y >= 0 && y < moduleCount)
+            ? qrImage.isDark(y, x)
+            : false;
+        final bottom = (x >= 0 && x < moduleCount && (y + 1) >= 0 && (y + 1) < moduleCount)
+            ? qrImage.isDark(y + 1, x)
+            : false;
+
+        if (top && bottom) {
+          buffer.write('\x1B[30m█');
+        } else if (top && !bottom) {
+          buffer.write('\x1B[30m▀');
+        } else if (!top && bottom) {
+          buffer.write('\x1B[30m▄');
+        } else {
+          buffer.write(' ');
+        }
+      }
+      buffer.writeln('\x1B[0m');
+    }
+    return buffer.toString();
+  } catch (e) {
+    return '      [QR Code indisponível: $e]\n';
+  }
+}
+
 void _promptReturnToMenu([String? message]) {
   final hasAnsi = stdout.hasTerminal;
   final dim = hasAnsi ? AnsiStyles.gray : '';
@@ -889,6 +936,9 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
       port = int.tryParse(inputPort) ?? 42385;
     }
 
+    final bestIp = await NetworkUtils.getBestLocalIp();
+    final qrUri = 'slft://$bestIp:$port';
+
     clearScreen(ctx);
     printCyberBanner(
       mode: 'RECEIVE » Inbound Listener Active',
@@ -896,8 +946,15 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
       ctx: ctx,
     );
 
-    stdout.writeln('  $c2📡 Receptor ativo! Aguardando conexões por até ${timeoutSec}s...$reset');
-    stdout.writeln('  $dim Abra o app no outro dispositivo ou use "slft <arquivo>" para enviar.$reset\n');
+    stdout.writeln('  $c1┌─────────────────────────────────────────────────────────────┐$reset');
+    stdout.writeln('  $c1│$reset  $bold📷 ESCANEIE COM O APP MOBILE PARA CONECTAR$reset');
+    stdout.writeln('  $c1├─────────────────────────────────────────────────────────────┤$reset');
+    stdout.writeln('  $c1│$reset  $dim URI de Conexão:$reset  $bold$c2$qrUri$reset');
+    stdout.writeln('  $c1└─────────────────────────────────────────────────────────────┘$reset\n');
+    stdout.write(renderTerminalQrCode(qrUri));
+
+    stdout.writeln('\n  $c2📡 Receptor ativo! Aguardando conexões por até ${timeoutSec}s...$reset');
+    stdout.writeln('  $dim Abra o app no celular e mire a câmera no QR Code acima.$reset\n');
 
     final received = await _runInteractiveReceiver(port, timeoutSec, ctx);
 
@@ -910,7 +967,7 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
       stdout.writeln('  $yellow│$reset');
       stdout.writeln('  $yellow│$reset  $dim💡 Dicas de conexão:$reset');
       stdout.writeln('  $yellow│$reset   • No transmissor, certifique-se de usar o IP $localIps');
-      stdout.writeln('  $yellow│$reset   • Verifique se ambos os aparelhos estão no mesmo Wi-Fi');
+      stdout.writeln('  $yellow│$reset   • Ou mire o leitor de QR Code do celular no código acima');
       stdout.writeln('  $yellow└─────────────────────────────────────────────────────────────┘$reset');
 
       stdout.writeln('\n  $c1[r]$reset 🔄 Aguardar novamente por mais tempo (90s)');
@@ -924,6 +981,48 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
       }
       break;
     }
+  }
+}
+
+/// Standalone QR Code Connection Flow.
+Future<void> _interactiveQrConnectFlow(CliContext ctx) async {
+  clearScreen(ctx);
+  final bestIp = await NetworkUtils.getBestLocalIp();
+  const port = 42385;
+  final qrUri = 'slft://$bestIp:$port';
+
+  printCyberBanner(
+    mode: 'QR CODE » Scan to Connect',
+    detail: 'Aponte a câmera do celular para conectar instantaneamente',
+    ctx: ctx,
+  );
+
+  final hasAnsi = stdout.hasTerminal;
+  final bold = hasAnsi ? AnsiStyles.bold : '';
+  final c1 = hasAnsi ? AnsiStyles.brightCyan : '';
+  final c2 = hasAnsi ? AnsiStyles.brightGreen : '';
+  final dim = hasAnsi ? AnsiStyles.gray : '';
+  final reset = hasAnsi ? AnsiStyles.reset : '';
+  final white = hasAnsi ? AnsiStyles.white : '';
+
+  stdout.writeln('  $c1┌─────────────────────────────────────────────────────────────┐$reset');
+  stdout.writeln('  $c1│$reset  $bold📷 CONECTAR VIA QR CODE (SMARTPHONE ➔ COMPUTADOR)$reset');
+  stdout.writeln('  $c1│$reset  $dim Abra o app no celular, toque em$reset $bold$white[Ler QR]$reset $dim e aponte aqui:$reset');
+  stdout.writeln('  $c1├─────────────────────────────────────────────────────────────┤$reset');
+  stdout.writeln('  $c1│$reset  $dim Endereço URI:$reset $bold$c2$qrUri$reset');
+  stdout.writeln('  $c1└─────────────────────────────────────────────────────────────┘$reset\n');
+
+  stdout.write(renderTerminalQrCode(qrUri));
+
+  stdout.writeln('\n  $c2📡 Receptor aberto na porta $port! Aguardando escaneamento (60s)...$reset');
+  stdout.writeln('  $dim Pressione Ctrl+C para cancelar a qualquer momento.$reset\n');
+
+  final received = await _runInteractiveReceiver(port, 60, ctx);
+  if (received) {
+    _promptReturnToMenu('Pressione [Enter] para voltar ao menu principal...');
+  } else {
+    stdout.writeln('  $dim Tempo de escaneamento esgotado.$reset');
+    _promptReturnToMenu();
   }
 }
 
@@ -947,12 +1046,13 @@ Future<void> handleInteractiveMenu(CliContext ctx) async {
 
     stdout.writeln('  $bold┌────────────────────────────────────────────────────────┐$reset');
     stdout.writeln('  $bold│$reset  $c1[1]$reset $bold📤 Enviar Arquivo$reset          $dim(Auto-discovery & Send)$reset    $bold│$reset');
-    stdout.writeln('  $bold│$reset  $c2[2]$reset $bold📥 Receber Arquivo$reset         $dim(Listener na porta 42385)$reset  $bold│$reset');
+    stdout.writeln('  $bold│$reset  $c2[2]$reset $bold📥 Receber Arquivo$reset         $dim(Listener & QR Code)$reset       $bold│$reset');
     stdout.writeln('  $bold│$reset  $c1[3]$reset $bold🔍 Radar da Rede Local$reset     $dim(Escanear peers mDNS/UDP)$reset  $bold│$reset');
-    stdout.writeln('  $bold│$reset  $dim[4]$reset $bold📖 Ajuda & Comandos$reset        $dim(Sintaxe e opções)$reset         $bold│$reset');
+    stdout.writeln('  $bold│$reset  $c2[4]$reset $bold📷 Conectar via QR Code$reset    $dim(Exibir QR para o celular)$reset $bold│$reset');
+    stdout.writeln('  $bold│$reset  $dim[5]$reset $bold📖 Ajuda & Comandos$reset        $dim(Sintaxe e opções)$reset         $bold│$reset');
     stdout.writeln('  $bold│$reset  $dim[0]$reset $bold❌ Sair$reset                    $dim(Encerrar sessão)$reset          $bold│$reset');
     stdout.writeln('  $bold└────────────────────────────────────────────────────────┘$reset');
-    stdout.write('\n  $bold$c1» Escolha uma opção [1-4, 0]:$reset ');
+    stdout.write('\n  $bold$c1» Escolha uma opção [1-5, 0]:$reset ');
 
     final choice = stdin.readLineSync()?.trim();
     stdout.writeln();
@@ -968,9 +1068,14 @@ Future<void> handleInteractiveMenu(CliContext ctx) async {
         await _interactiveDiscoverFlow(ctx);
         break;
       case '4':
+      case 'q':
+      case 'qr':
+        await _interactiveQrConnectFlow(ctx);
+        break;
+      case '5':
         clearScreen(ctx);
         printUsage();
-        stdout.writeln('  $c1[1]$reset $bold📤 Enviar$reset    $c2[2]$reset $bold📥 Receber$reset    $c1[3]$reset $bold🔍 Radar$reset    $dim[Enter]$reset 🔙 Menu Principal');
+        stdout.writeln('  $c1[1]$reset $bold📤 Enviar$reset    $c2[2]$reset $bold📥 Receber$reset    $c1[3]$reset $bold🔍 Radar$reset    $c2[4]$reset $bold📷 QR Code$reset    $dim[Enter]$reset 🔙 Menu');
         stdout.write('\n  $bold» Opção:$reset ');
         final helpAction = stdin.readLineSync()?.trim().toLowerCase();
         if (helpAction == '1') {
@@ -979,10 +1084,11 @@ Future<void> handleInteractiveMenu(CliContext ctx) async {
           await _interactiveReceiveFlow(ctx);
         } else if (helpAction == '3') {
           await _interactiveDiscoverFlow(ctx);
+        } else if (helpAction == '4') {
+          await _interactiveQrConnectFlow(ctx);
         }
         break;
       case '0':
-      case 'q':
       case 'quit':
       case 'exit':
         stdout.writeln('  $dim Até logo!$reset');
