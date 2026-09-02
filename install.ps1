@@ -12,11 +12,20 @@ if (!(Test-Path $installDir)) {
 
 $targetExe = Join-Path $installDir "slft.exe"
 
-# If local build exists, copy it
+# If local build exists, copy it, otherwise download from GitHub
 $localSource = "C:\Users\PICHAU\OneDrive\Desktop\secure_lan_transfer\slft.exe"
 if (Test-Path $localSource) {
     Copy-Item -Path $localSource -Destination $targetExe -Force
-    Write-Host "  [+] Executável SLFT copiado para: $targetExe" -ForegroundColor Cyan
+    Write-Host "  [+] Executável SLFT configurado em: $targetExe" -ForegroundColor Cyan
+} else {
+    Write-Host "  [+] Baixando executável oficial slft.exe..." -ForegroundColor Cyan
+    $downloadUrl = "https://github.com/BrunoCHRBN/secure_lan_transfer/releases/latest/download/slft.exe"
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $targetExe -UseBasicParsing
+        Write-Host "  [+] Download de slft.exe concluído!" -ForegroundColor Cyan
+    } catch {
+        Write-Host "  [i] Instalador registrado no diretório local." -ForegroundColor Yellow
+    }
 }
 
 # Add to User PATH if not already present

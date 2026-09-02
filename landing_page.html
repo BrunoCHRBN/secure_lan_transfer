@@ -698,16 +698,21 @@
       const promptSymbol = document.getElementById('cli-prompt-symbol');
       const osLabel = document.getElementById('os-label');
 
+      let host = window.location.origin;
+      if (!host || host === 'null' || host.startsWith('file:') || host.includes('localhost') || host.includes('127.0.0.1')) {
+        host = 'https://secure-lan-transfer.vercel.app';
+      }
+
       if (os === 'win') {
         btnWin.className = 'font-bold text-[#082216] hover:text-[#082216] transition-colors';
         btnNix.className = 'text-[#082216]/60 hover:text-[#082216] transition-colors';
-        cmdText.innerText = 'irm https://slft.dev/install.ps1 | iex';
+        cmdText.innerText = `irm ${host}/install.ps1 | iex`;
         promptSymbol.innerText = 'PS>';
         osLabel.innerText = 'Windows';
       } else {
         btnNix.className = 'font-bold text-[#082216] hover:text-[#082216] transition-colors';
         btnWin.className = 'text-[#082216]/60 hover:text-[#082216] transition-colors';
-        cmdText.innerText = 'curl -sSL https://slft.dev/install.sh | sh';
+        cmdText.innerText = `curl -sSL ${host}/install.sh | sh`;
         promptSymbol.innerText = '$';
         osLabel.innerText = 'Linux / macOS';
       }
