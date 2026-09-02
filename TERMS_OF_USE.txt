@@ -1,0 +1,17 @@
+TERMOS DE USO, PRIVACIDADE E SEGURANÇA — SECURE LAN FILE TRANSFER (SLFT)
+Versão: 1.1.0 | Data: Setembro de 2026
+
+1. PRIVACIDADE E POLÍTICA ZERO-METADATA
+A aplicação opera estritamente no modelo Zero-Metadata por padrão. Nomes de arquivos, registros de conexões e identificadores de dispositivos trafegam exclusivamente criptografados e não são armazenados em arquivos persistentes de log no disco, existindo apenas na memória RAM volátil durante a execução da sessão.
+
+2. CRIPTOGRAFIA DE PONTA A PONTA (E2EE)
+Todas as transferências utilizam a suíte criptográfica moderna com troca de chaves assíncronas X25519 (Curve25519 ECDH), derivação HKDF-SHA256 e cifra autenticada ChaCha20-Poly1305 / AES-GCM. A validação de integridade ocorre via MAC Poly1305 por bloco e hash final SHA-256.
+
+3. AUTENTICAÇÃO E CÓDIGO SAS
+Para proteção ativa contra ataques de interceptação na rede local (Man-in-the-Middle), o sistema disponibiliza autenticação SAS (Short Authentication String) com verificação visual de dígitos e suporte a senhas PIN pré-compartilhadas.
+
+4. OFUSCAÇÃO DE TRÁFEGO
+O protocolo inclui preenchimento aleatório de pacotes (padding framing) para prevenir análise de tráfego por inspeção profunda (DPI) dentro da rede local.
+
+5. ISENÇÃO E RESPONSABILIDADE DO USUÁRIO
+O usuário reconhece que a aplicação é uma ferramenta para transporte seguro e legítimo de dados em redes autorizadas, sendo o próprio usuário o único responsável pelos arquivos transmitidos.

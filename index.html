@@ -1,0 +1,815 @@
+<!-- // Design Decision: Aplicado design editorial com fundo off-white (#FBFBF8), headers em verde escuro royal (#082216), bordas finas de 1px e glassmorphism leve com backdrop-blur sem sombras pesadas conforme design.md -->
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure LAN Transfer — Protocolo de Transferência P2P Local Zero-Metadata</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --bg-offwhite: #FAF9F5;
+      --bg-surface: #FFFFFF;
+      --green-royal: #082216;
+      --green-deep: #0D3321;
+      --green-accent: #155E3E;
+      --green-emerald: #10B981;
+      --border-subtle: rgba(8, 34, 22, 0.08);
+      --border-medium: rgba(8, 34, 22, 0.15);
+    }
+
+    body {
+      background-color: var(--bg-offwhite);
+      color: #1F2937;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .font-editorial {
+      font-family: 'Instrument Serif', Georgia, serif;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Glassmorphism Frosted Glass */
+    .glass-nav {
+      background-color: rgba(250, 249, 245, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .glass-card {
+      background-color: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .glass-card-dark {
+      background-color: #0A120E;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    /* Scroll Reveal Animation */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* Custom Terminal Styling */
+    .terminal-header {
+      background: #111B15;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Custom Scrollbar for Pre and Hex views */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(8, 34, 22, 0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-[#082216] selection:text-white">
+
+  <!-- ==================== HEADER (FROSTED GLASS) ==================== -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass-nav transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="#hero" class="flex items-center gap-3 group">
+        <div class="w-9 h-9 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono font-bold text-sm border border-[#155E3E]/30 group-hover:bg-[#0D3321] transition-colors">
+          SLFT
+        </div>
+        <div class="flex flex-col">
+          <span class="font-semibold text-sm tracking-tight text-[#082216]">Secure LAN Transfer</span>
+          <span class="text-[10px] font-mono text-[#155E3E] uppercase tracking-wider">Protocol v1.1.0</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="hidden md:flex items-center gap-8 text-xs font-medium uppercase tracking-wider text-[#082216]/70">
+        <a href="#protocol" class="hover:text-[#082216] transition-colors">Criptografia & Protocolo</a>
+        <a href="#showcase" class="hover:text-[#082216] transition-colors">Demonstração</a>
+        <a href="#benchmark" class="hover:text-[#082216] transition-colors">Performance LAN</a>
+        <a href="#downloads" class="hover:text-[#082216] transition-colors">Downloads</a>
+        <a href="#faq" class="hover:text-[#082216] transition-colors">FAQ</a>
+      </nav>
+
+      <!-- Live Status & CTA -->
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#082216]/5 border border-[#082216]/10 text-[11px] font-mono text-[#082216]">
+          <span class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+          <span>Zero-Metadata Active</span>
+        </div>
+        <a href="#downloads" class="inline-flex items-center justify-center px-4 py-2 text-xs font-medium text-white bg-[#082216] hover:bg-[#0D3321] rounded-md transition-colors border border-[#082216]">
+          Obter SLFT
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== HERO SECTION ==================== -->
+  <section id="hero" class="pt-36 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto reveal">
+      
+      <!-- Eyebrow Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-[#082216]/10 text-xs font-mono text-[#082216] mb-8 shadow-xs">
+        <span class="text-[#10B981]">●</span>
+        <span>Rede Local P2P • Sem Servidores Externos • Sem Nuvem</span>
+      </div>
+
+      <!-- Main Editorial Headline -->
+      <h1 class="text-5xl sm:text-6xl md:text-7xl font-editorial tracking-tight text-[#082216] leading-[1.05] mb-6">
+        Transferência de arquivos em velocidade real de cabo. <br>
+        <span class="italic font-normal">Criptografia pura. Zero rastros.</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-base sm:text-lg text-[#082216]/75 leading-relaxed mb-10 max-w-2xl mx-auto font-normal">
+        Envie gigabytes entre seu computador e smartphone instantaneamente pela rede local. Protegido com X25519 e ChaCha20-Poly1305, sem salvar históricos em disco e sem enviar nenhum byte para a internet.
+      </p>
+
+      <!-- Quick Install & Action Row -->
+      <div class="flex flex-col items-center justify-center gap-4 mb-16 max-w-xl mx-auto">
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+          <!-- Primary Action -->
+          <a href="#downloads" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-[#082216] hover:bg-[#0D3321] rounded-md transition-colors shadow-xs">
+            <span>Baixar Desktop & Mobile</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+
+          <!-- CLI Command Box with OS Selector -->
+          <div class="w-full sm:w-auto flex-1 flex flex-col bg-white border border-[#082216]/15 rounded-md p-1.5 shadow-xs">
+            <div class="flex items-center justify-between px-2 pb-1 border-b border-[#082216]/5 text-[10px] font-mono text-[#082216]/60">
+              <div class="flex gap-2">
+                <button onclick="setCliOs('win')" id="os-btn-win" class="font-bold text-[#082216] hover:text-[#082216] transition-colors">PowerShell (Win)</button>
+                <span class="text-[#082216]/20">|</span>
+                <button onclick="setCliOs('nix')" id="os-btn-nix" class="hover:text-[#082216] transition-colors">Bash (Linux/Mac)</button>
+              </div>
+              <span id="os-label" class="text-[9px] uppercase tracking-wider text-[#10B981]">Windows</span>
+            </div>
+            <div class="flex items-center justify-between gap-3 px-2 pt-1 font-mono text-xs text-[#082216]">
+              <span id="cli-prompt-symbol" class="text-[#082216]/40 select-none">PS&gt;</span>
+              <span id="cli-cmd-text" class="font-medium truncate select-all">irm https://slft.dev/install.ps1 | iex</span>
+              <button onclick="copyCliCommand()" id="copy-btn" class="p-1 hover:bg-[#082216]/5 rounded transition-colors text-[#082216]/70 hover:text-[#082216] shrink-0" title="Copiar comando">
+                <svg id="copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trust Metrics Bar -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-[#082216]/10 text-left">
+        <div class="p-4 bg-white/60 rounded-md border border-[#082216]/5">
+          <div class="text-2xl font-bold font-editorial text-[#082216]">112 MB/s</div>
+          <div class="text-xs text-[#082216]/60 mt-0.5">Throughput Saturado em Gigabit</div>
+        </div>
+        <div class="p-4 bg-white/60 rounded-md border border-[#082216]/5">
+          <div class="text-2xl font-bold font-editorial text-[#082216]">Zero Cloud</div>
+          <div class="text-xs text-[#082216]/60 mt-0.5">Sem tráfego para servidores externos</div>
+        </div>
+        <div class="p-4 bg-white/60 rounded-md border border-[#082216]/5">
+          <div class="text-2xl font-bold font-editorial text-[#082216]">ChaCha20</div>
+          <div class="text-xs text-[#082216]/60 mt-0.5">Poly1305 AEAD + X25519 ECDH</div>
+        </div>
+        <div class="p-4 bg-white/60 rounded-md border border-[#082216]/5">
+          <div class="text-2xl font-bold font-editorial text-[#082216]">0 Bytes</div>
+          <div class="text-xs text-[#082216]/60 mt-0.5">Metadados persistidos em disco</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== DUAL SHOWCASE SECTION ==================== -->
+  <section id="showcase" class="py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+    <div class="glass-card rounded-xl p-6 sm:p-8 shadow-xs border border-[#082216]/15 reveal">
+      
+      <!-- Showcase Tab Switcher -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-[#082216]/10 gap-4">
+        <div>
+          <span class="text-xs font-mono uppercase tracking-wider text-[#155E3E]">Showcase Interativo</span>
+          <h2 class="text-2xl font-editorial text-[#082216] font-bold">Duas formas de operar. A mesma segurança.</h2>
+        </div>
+        
+        <div class="inline-flex p-1 bg-[#082216]/5 rounded-md border border-[#082216]/10">
+          <button onclick="switchTab('cli')" id="tab-btn-cli" class="px-4 py-1.5 text-xs font-medium rounded-sm bg-[#082216] text-white transition-all shadow-xs">
+            📟 Terminal CLI (`slft`)
+          </button>
+          <button onclick="switchTab('gui')" id="tab-btn-gui" class="px-4 py-1.5 text-xs font-medium rounded-sm text-[#082216]/70 hover:text-[#082216] transition-all">
+            📱 App Desktop & Mobile
+          </button>
+        </div>
+      </div>
+
+      <!-- VIEW 1: CLI INTERACTIVE TERMINAL -->
+      <div id="view-cli" class="transition-opacity duration-300">
+        <div class="rounded-lg overflow-hidden border border-[#082216]/20 bg-[#090E0B] text-white font-mono text-xs sm:text-sm shadow-md">
+          <!-- Terminal Bar -->
+          <div class="terminal-header px-4 py-2.5 flex items-center justify-between text-xs text-white/50 select-none">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-[#EF4444]/80"></span>
+              <span class="w-3 h-3 rounded-full bg-[#F59E0B]/80"></span>
+              <span class="w-3 h-3 rounded-full bg-[#10B981]/80"></span>
+              <span class="ml-2 text-white/70 font-sans text-xs">slft — bash — 80x24</span>
+            </div>
+            <span class="text-[11px] text-[#10B981]">Encrypted Pipe Active</span>
+          </div>
+
+          <!-- Terminal Content -->
+          <div class="p-5 sm:p-6 space-y-3 leading-relaxed text-[#E2E8F0]">
+            <div>
+              <span class="text-[#10B981]">$</span> slft photo_2025-03-30.jpg
+            </div>
+            <div class="text-white/60">
+              [INFO] Varrendo a rede local física (192.168.15.x)...
+            </div>
+            <div class="text-[#38BDF8]">
+              [+] Dispositivo encontrado: Galaxy-S24 (192.168.15.14:42385) [android] via UDP Unicast Pong
+            </div>
+            
+            <!-- SAS Box -->
+            <div class="p-3.5 my-2 rounded bg-[#0D1812] border border-[#10B981]/30 text-white">
+              <div class="text-[#10B981] font-semibold text-xs mb-1">🔐 AUTENTICAÇÃO SAS (VERIFICAÇÃO DE SEGURANÇA E2EE)</div>
+              <div class="text-white/70 text-xs">Destino: <span class="text-white font-bold">192.168.15.14:42385</span></div>
+              <div class="my-2 border-t border-white/10"></div>
+              <div class="flex flex-wrap items-center gap-4 text-xs">
+                <div>Código: <span class="text-[#10B981] font-bold text-sm">233-994</span></div>
+                <div class="text-white/70">Emojis: 🛴 (Kick Scooter) 🥪 (Sandwich) 🦃 (Turkey) 🥟 (Dumpling)</div>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-[#38BDF8]">»</span> O código confere com o dispositivo remoto? [S/n]: <span class="text-white font-bold">s</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="text-[#10B981] py-1">
+              ⚡ [████████████████████████] 100.0% (12.1 MB / 12.1 MB) • 112.4 MB/s • ETA: 00:00
+            </div>
+
+            <!-- Success Box -->
+            <div class="p-3.5 mt-2 rounded bg-[#0A1A11] border border-[#10B981]/50 text-white">
+              <div class="text-[#10B981] font-semibold text-xs mb-1">🎉 TRANSFERÊNCIA CONCLUÍDA & VERIFICADA!</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-white/80 mt-2">
+                <div>• Arquivo: <span class="text-white font-semibold">photo_2025-03-30.jpg</span></div>
+                <div>• Velocidade: <span class="text-[#10B981] font-semibold">112.4 MB/s</span></div>
+                <div>• Tamanho: <span class="text-white">12.1 MB (194 chunks)</span></div>
+                <div>• Tempo: <span class="text-white">108 ms</span></div>
+              </div>
+              <div class="mt-2 pt-2 border-t border-white/10 text-[11px] text-white/60">
+                🛡️ SHA-256 Validado: <span class="text-white/80 font-mono">b42ddd5db41da081bc9beb7d5818fe8aa823a585...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: APP GUI MOCKUP WITH WIRE INSPECTOR -->
+      <div id="view-gui" class="hidden transition-opacity duration-300">
+        <div class="rounded-lg overflow-hidden border border-[#082216]/15 bg-white p-5 sm:p-6 shadow-sm">
+          
+          <!-- Mockup Top Bar -->
+          <div class="flex items-center justify-between pb-4 mb-4 border-b border-[#082216]/10">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded bg-[#082216] text-[#10B981] flex items-center justify-center font-bold text-xs">
+                SLFT
+              </div>
+              <div>
+                <div class="text-sm font-bold text-[#082216]">Secure LAN Transfer Desktop</div>
+                <div class="text-[11px] text-[#082216]/60">Interface: 192.168.15.12 • Porta: 42385</div>
+              </div>
+            </div>
+            <div class="px-2.5 py-1 rounded bg-[#10B981]/15 text-[#082216] border border-[#10B981]/30 text-xs font-mono">
+              🛡️ Zero-Plaintext Audit: PASS
+            </div>
+          </div>
+
+          <!-- Mockup Transfer & Inspector Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            
+            <!-- Left: Transfer Card -->
+            <div class="md:col-span-5 p-4 rounded-lg bg-[#FAF9F5] border border-[#082216]/10 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono uppercase text-[#082216]/60">Status do Envio</span>
+                <span class="text-xs font-bold text-[#10B981]">112.4 MB/s</span>
+              </div>
+              
+              <div>
+                <div class="text-sm font-semibold text-[#082216]">video_projeto_final.mp4</div>
+                <div class="text-xs text-[#082216]/60">Destino: Galaxy S24 (192.168.15.14)</div>
+              </div>
+
+              <!-- Progress bar -->
+              <div class="w-full bg-[#082216]/10 rounded-full h-2 overflow-hidden">
+                <div class="bg-[#082216] h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+              </div>
+
+              <div class="flex justify-between text-xs text-[#082216]/70 font-mono">
+                <span>1.4 GB / 1.4 GB</span>
+                <span>100% Concluído</span>
+              </div>
+
+              <div class="pt-2 border-t border-[#082216]/10 text-[11px] text-[#082216]/70">
+                🔒 ChaCha20-Poly1305 AEAD • Ephemeral X25519
+              </div>
+            </div>
+
+            <!-- Right: Real Live Wire Hex Dump -->
+            <div class="md:col-span-7 p-4 rounded-lg bg-[#0A100D] border border-[#082216]/30 text-white font-mono text-[11px]">
+              <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+                <span class="text-[#38BDF8] font-bold">📡 Inspetor de Tráfego de Rede (Live Wire)</span>
+                <span class="text-[#10B981] text-[10px]">Entropia: 7.9998 b/B</span>
+              </div>
+              <div class="space-y-1 text-white/80 overflow-x-auto pb-1">
+                <div class="text-white/40 select-none">OFFSET    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII</div>
+                <div class="text-[#38BDF8]">00000000  53 45 43 46 4C 58 01 03  00 00 00 00 00 00 00 12  SECFLX..........</div>
+                <div class="text-[#A78BFA]">00000010  C4 A1 9F 3B 82 D1 0E 44  8F B3 12 77 90 EE AA 19  ...;...D...w....</div>
+                <div class="text-[#34D399]">00000020  7F A8 30 D9 C2 11 E4 B0  67 91 3C FA 02 BD 8E 71  ..0.....g.<....q</div>
+                <div class="text-[#34D399]">00000030  9B 22 E1 A7 88 F0 33 CC  D4 15 89 2F 44 B1 00 EF  ."....3..../D...</div>
+              </div>
+              <div class="mt-2 pt-2 border-t border-white/10 text-[10px] text-white/50">
+                ℹ️ Pacotes criptografados matematicamente indistinguíveis de ruído aleatório. Zero vazamento de arquivos.
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== PROTOCOL ANATOMY SECTION ==================== -->
+  <section id="protocol" class="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto mb-16 reveal">
+      <span class="text-xs font-mono uppercase tracking-wider text-[#155E3E]">Arquitetura Criptográfica</span>
+      <h2 class="text-4xl sm:text-5xl font-editorial text-[#082216] mt-2 mb-4">Engenharia projetada para confidencialidade absoluta.</h2>
+      <p class="text-base text-[#082216]/70 font-normal">
+        Cada camada do protocolo Secure LAN Transfer foi projetada com primitivas criptográficas auditáveis, eliminando intermediários, nuvem e vetores de inspeção em trânsito.
+      </p>
+    </div>
+
+    <!-- 4 Pillars Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Card 1: X25519 & ChaCha20 -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all duration-300 reveal reveal-delay-1">
+        <div class="w-10 h-10 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono text-sm mb-6 border border-[#155E3E]/30">
+          01
+        </div>
+        <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-3">Troca de Chaves X25519 ECDH & Cifra AEAD</h3>
+        <p class="text-sm text-[#082216]/75 leading-relaxed mb-4">
+          Cada sessão gera um par de chaves efêmeras na memória RAM. A derivação de segredo compartilhado via HKDF-SHA256 alimenta o algoritmo <strong>ChaCha20-Poly1305</strong> com autenticação de dados associados (AAD de 18 bytes).
+        </p>
+        <div class="p-3 bg-[#FAF9F5] rounded border border-[#082216]/10 font-mono text-xs text-[#082216]">
+          🔒 Forward Secrecy Perfeita • Sem Chaves Pré-Compartilhadas
+        </div>
+      </div>
+
+      <!-- Card 2: Zero-Metadata Disk Policy -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all duration-300 reveal reveal-delay-2">
+        <div class="w-10 h-10 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono text-sm mb-6 border border-[#155E3E]/30">
+          02
+        </div>
+        <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-3">Política Estrita Zero-Metadata</h3>
+        <p class="text-sm text-[#082216]/75 leading-relaxed mb-4">
+          Nenhum log, histórico de envio ou nome de arquivo é salvo no disco rígido. Durante a transferência, blocos incompletos são mantidos em buffers voláteis na memória e sobrescritos com zeros criptográficos caso a sessão seja interrompida.
+        </p>
+        <div class="p-3 bg-[#FAF9F5] rounded border border-[#082216]/10 font-mono text-xs text-[#082216]">
+          🛡️ Wipe Criptográfico com Zeros em Abortos de Sessão
+        </div>
+      </div>
+
+      <!-- Card 3: Discovery P2P -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all duration-300 reveal reveal-delay-1">
+        <div class="w-10 h-10 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono text-sm mb-6 border border-[#155E3E]/30">
+          03
+        </div>
+        <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-3">Descoberta Local Multi-Canal (mDNS + UDP Pong)</h3>
+        <p class="text-sm text-[#082216]/75 leading-relaxed mb-4">
+          Detecção automática de nós vizinhos sem depender de servidores DNS externos. Combina mDNS na porta 5353, beacons UDP multi-interface e respostas Unicast Pong imediatas, contornando filtros e isolamento de clientes (AP Isolation).
+        </p>
+        <div class="p-3 bg-[#FAF9F5] rounded border border-[#082216]/10 font-mono text-xs text-[#082216]">
+          📡 Funciona 100% offline em roteadores e hotspots sem internet
+        </div>
+      </div>
+
+      <!-- Card 4: Streaming Gigabit -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all duration-300 reveal reveal-delay-2">
+        <div class="w-10 h-10 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono text-sm mb-6 border border-[#155E3E]/30">
+          04
+        </div>
+        <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-3">Streaming com Janela de Créditos Deslizante</h3>
+        <p class="text-sm text-[#082216]/75 leading-relaxed mb-4">
+          Motor de streaming que divide arquivos em chunks de 256 KB com controle de fluxo por créditos. Mantém o uso de memória RAM delimitado abaixo de 200 MB mesmo durante a transferência de arquivos pesados de 50 GB.
+        </p>
+        <div class="p-3 bg-[#FAF9F5] rounded border border-[#082216]/10 font-mono text-xs text-[#082216]">
+          ⚡ Saturação total da largura de banda Ethernet e Wi-Fi 6
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== BENCHMARK CALCULATOR ==================== -->
+  <section id="benchmark" class="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-white/50 rounded-2xl border border-[#082216]/10 my-8">
+    <div class="max-w-4xl mx-auto reveal">
+      
+      <div class="text-center mb-12">
+        <span class="text-xs font-mono uppercase tracking-wider text-[#155E3E]">Simulador Interativo de Velocidade</span>
+        <h2 class="text-4xl font-editorial text-[#082216] mt-2 mb-3 font-bold">A matemática da velocidade local vs Nuvem tradicional.</h2>
+        <p class="text-sm text-[#082216]/70">
+          Compare o tempo necessário para transferir arquivos diretamente pelo cabo/Wi-Fi local contra a rota tradicional da internet.
+        </p>
+      </div>
+
+      <!-- File Size Selector Pills -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mb-10">
+        <button onclick="setBenchmarkSize(100, '100 MB')" id="btn-size-100" class="size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-[#082216] text-white border border-[#082216] transition-all">
+          100 MB (Fotos RAW)
+        </button>
+        <button onclick="setBenchmarkSize(1024, '1.0 GB')" id="btn-size-1024" class="size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-white text-[#082216] border border-[#082216]/15 hover:border-[#082216] transition-all">
+          1 GB (Vídeo 4K)
+        </button>
+        <button onclick="setBenchmarkSize(10240, '10 GB')" id="btn-size-10240" class="size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-white text-[#082216] border border-[#082216]/15 hover:border-[#082216] transition-all">
+          10 GB (Backup ZIP)
+        </button>
+        <button onclick="setBenchmarkSize(51200, '50 GB')" id="btn-size-51200" class="size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-white text-[#082216] border border-[#082216]/15 hover:border-[#082216] transition-all">
+          50 GB (Dataset / VM)
+        </button>
+      </div>
+
+      <!-- Comparison Card Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Local LAN SLFT -->
+        <div class="p-6 sm:p-8 rounded-xl bg-[#082216] text-white border border-[#155E3E]/40 relative overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-mono uppercase tracking-wider text-[#10B981]">● Secure LAN Transfer (SLFT)</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-[#10B981]/20 text-[#10B981] font-mono">112.0 MB/s</span>
+          </div>
+          <div class="text-3xl sm:text-4xl font-editorial font-bold mb-2 text-white" id="slft-time-display">
+            0.89 segundos
+          </div>
+          <p class="text-xs text-white/70 leading-relaxed mb-6">
+            Conexão direta P2P no hardware da sua rede local. Tráfego direto entre dispositivos na velocidade nativa da sua placa de rede.
+          </p>
+          <div class="space-y-2 text-xs font-mono text-white/80 border-t border-white/10 pt-4">
+            <div class="flex justify-between"><span>Criptografia:</span><span class="text-[#10B981]">ChaCha20-Poly1305</span></div>
+            <div class="flex justify-between"><span>Tráfego Externo:</span><span class="text-[#10B981]">0 KB (Zero)</span></div>
+            <div class="flex justify-between"><span>Dependência de Internet:</span><span class="text-[#10B981]">Nenhuma</span></div>
+          </div>
+        </div>
+
+        <!-- Cloud Storage Traditional -->
+        <div class="p-6 sm:p-8 rounded-xl bg-white text-[#082216] border border-[#082216]/15 shadow-xs">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-mono uppercase tracking-wider text-[#082216]/60">○ Nuvem Tradicional (Drive/Dropbox)</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-[#082216]/5 text-[#082216]/70 font-mono">~10.0 MB/s</span>
+          </div>
+          <div class="text-3xl sm:text-4xl font-editorial font-bold mb-2 text-[#082216]/80" id="cloud-time-display">
+            20.0 segundos
+          </div>
+          <p class="text-xs text-[#082216]/65 leading-relaxed mb-6">
+            Upload para servidores na nuvem + tempo de espera para download no segundo aparelho. Consome franquia de internet e expõe metadados.
+          </p>
+          <div class="space-y-2 text-xs font-mono text-[#082216]/70 border-t border-[#082216]/10 pt-4">
+            <div class="flex justify-between"><span>Etapas:</span><span>Upload + Download (2x)</span></div>
+            <div class="flex justify-between"><span>Tráfego Externo:</span><span>100% na Internet</span></div>
+            <div class="flex justify-between"><span>Retenção de Arquivo:</span><span>Armazenado em Data Center</span></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== DOWNLOADS SECTION ==================== -->
+  <section id="downloads" class="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto mb-16 reveal">
+      <span class="text-xs font-mono uppercase tracking-wider text-[#155E3E]">Downloads & Instalação</span>
+      <h2 class="text-4xl sm:text-5xl font-editorial text-[#082216] mt-2 mb-4 font-bold">Pronto para rodar na sua máquina.</h2>
+      <p class="text-base text-[#082216]/70 font-normal">
+        Binários nativos compilados sem dependências externas pesadas. Baixe o instalador assistido para Windows, o APK para Android ou utilize o CLI unificado.
+      </p>
+    </div>
+
+    <!-- Download Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Windows Desktop -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all flex flex-col justify-between reveal reveal-delay-1">
+        <div>
+          <div class="flex items-center justify-between mb-6">
+            <div class="w-12 h-12 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-bold text-lg">
+              🪟
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-[#082216]/5 text-[#082216] font-mono">v1.1.0 • x64</span>
+          </div>
+          <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-2">Windows Desktop</h3>
+          <p class="text-xs text-[#082216]/70 leading-relaxed mb-6">
+            Instalador assistido completo com arrastar-e-soltar (Drag & Drop), leitor de QR Code integrado e Inspetor de Tráfego de Rede (Live Wire Dump).
+          </p>
+        </div>
+        <div>
+          <a href="#" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-[#082216] hover:bg-[#0D3321] rounded-md transition-colors shadow-xs">
+            <span>Baixar Instalador (.exe)</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          </a>
+          <div class="text-[10px] text-center text-[#082216]/50 mt-2 font-mono">Windows 10 / 11 (64-bit)</div>
+        </div>
+      </div>
+
+      <!-- Android Mobile APK -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all flex flex-col justify-between reveal reveal-delay-2">
+        <div>
+          <div class="flex items-center justify-between mb-6">
+            <div class="w-12 h-12 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-bold text-lg">
+              📱
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-[#082216]/5 text-[#082216] font-mono">v1.0.0 • APK</span>
+          </div>
+          <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-2">Android Mobile</h3>
+          <p class="text-xs text-[#082216]/70 leading-relaxed mb-6">
+            Aplicativo nativo para smartphones Android com scanner de câmera QR Code, notificações em segundo plano e driver MulticastLock de alta performance.
+          </p>
+        </div>
+        <div>
+          <a href="#" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-[#082216] hover:bg-[#0D3321] rounded-md transition-colors shadow-xs">
+            <span>Baixar APK Direto</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          </a>
+          <div class="text-[10px] text-center text-[#082216]/50 mt-2 font-mono">Android 8.0+ (ARM64 / x86_64)</div>
+        </div>
+      </div>
+
+      <!-- Headless CLI -->
+      <div class="glass-card rounded-xl p-8 hover:border-[#082216]/30 transition-all flex flex-col justify-between reveal reveal-delay-3">
+        <div>
+          <div class="flex items-center justify-between mb-6">
+            <div class="w-12 h-12 rounded-md bg-[#082216] text-[#10B981] flex items-center justify-center font-mono font-bold text-sm">
+              &gt;_
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-[#082216]/5 text-[#082216] font-mono">CLI • slft</span>
+          </div>
+          <h3 class="text-2xl font-editorial text-[#082216] font-bold mb-2">Linha de Comando (CLI)</h3>
+          <p class="text-xs text-[#082216]/70 leading-relaxed mb-6">
+            Executável autônomo e headless para automações, servidores locais, pipelines CI/CD e usuários de terminal avançados.
+          </p>
+        </div>
+        <div>
+          <div class="p-2.5 bg-[#FAF9F5] rounded border border-[#082216]/10 font-mono text-[11px] text-[#082216] flex items-center justify-between">
+            <span class="truncate">cargo install slft-cli</span>
+            <button onclick="copyCustom('cargo install slft-cli')" class="text-[#155E3E] hover:text-[#082216] ml-2 font-semibold">COPIAR</button>
+          </div>
+          <div class="text-[10px] text-center text-[#082216]/50 mt-2 font-mono">Linux • macOS • Windows PowerShell</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== FAQ ACCORDION ==================== -->
+  <section id="faq" class="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+    <div class="text-center mb-16 reveal">
+      <span class="text-xs font-mono uppercase tracking-wider text-[#155E3E]">Perguntas Frequentes</span>
+      <h2 class="text-4xl font-editorial text-[#082216] mt-2 mb-3 font-bold">Tudo o que você precisa saber sobre o protocolo.</h2>
+    </div>
+
+    <div class="space-y-4 reveal">
+      
+      <!-- FAQ 1 -->
+      <div class="glass-card rounded-lg p-6 border border-[#082216]/10 cursor-pointer" onclick="toggleFaq(1)">
+        <div class="flex items-center justify-between">
+          <h4 class="text-base font-semibold text-[#082216]">O Secure LAN Transfer precisa de internet ativa para funcionar?</h4>
+          <span id="faq-icon-1" class="text-lg font-mono text-[#082216]/50 transition-transform duration-200">+</span>
+        </div>
+        <div id="faq-body-1" class="hidden mt-3 text-xs sm:text-sm text-[#082216]/75 leading-relaxed border-t border-[#082216]/5 pt-3">
+          Não. O aplicativo opera 100% offline. Basta que os dispositivos estejam conectados ao mesmo roteador Wi-Fi, cabo Ethernet ou hotspot móvel criado pelo próprio smartphone. Nenhum pacote trafega por servidores externos.
+        </div>
+      </div>
+
+      <!-- FAQ 2 -->
+      <div class="glass-card rounded-lg p-6 border border-[#082216]/10 cursor-pointer" onclick="toggleFaq(2)">
+        <div class="flex items-center justify-between">
+          <h4 class="text-base font-semibold text-[#082216]">Como o sistema garante que ninguém no mesmo Wi-Fi intercepte meus arquivos?</h4>
+          <span id="faq-icon-2" class="text-lg font-mono text-[#082216]/50 transition-transform duration-200">+</span>
+        </div>
+        <div id="faq-body-2" class="hidden mt-3 text-xs sm:text-sm text-[#082216]/75 leading-relaxed border-t border-[#082216]/5 pt-3">
+          Toda sessão inicia com a troca de chaves Diffie-Hellman sobre Curva Elíptica X25519 e código SAS de autenticação de 6 dígitos. Todos os pacotes subsequentes são autenticados com ChaCha20-Poly1305. Mesmo que um invasor capture os pacotes com Wireshark, o conteúdo é indistinguível de ruído estocástico aleatório.
+        </div>
+      </div>
+
+      <!-- FAQ 3 -->
+      <div class="glass-card rounded-lg p-6 border border-[#082216]/10 cursor-pointer" onclick="toggleFaq(3)">
+        <div class="flex items-center justify-between">
+          <h4 class="text-base font-semibold text-[#082216]">Existe algum limite no tamanho máximo dos arquivos transferidos?</h4>
+          <span id="faq-icon-3" class="text-lg font-mono text-[#082216]/50 transition-transform duration-200">+</span>
+        </div>
+        <div id="faq-body-3" class="hidden mt-3 text-xs sm:text-sm text-[#082216]/75 leading-relaxed border-t border-[#082216]/5 pt-3">
+          Não. Graças ao motor de streaming em memória com janela de créditos deslizante e chunks de 256 KB, você pode enviar arquivos de 100 GB ou mais sem que a memória RAM do computador ou do smartphone seja sobrecarregada.
+        </div>
+      </div>
+
+      <!-- FAQ 4 -->
+      <div class="glass-card rounded-lg p-6 border border-[#082216]/10 cursor-pointer" onclick="toggleFaq(4)">
+        <div class="flex items-center justify-between">
+          <h4 class="text-base font-semibold text-[#082216]">O que acontece se meu roteador tiver bloqueio de broadcast/multicast (AP Isolation)?</h4>
+          <span id="faq-icon-4" class="text-lg font-mono text-[#082216]/50 transition-transform duration-200">+</span>
+        </div>
+        <div id="faq-body-4" class="hidden mt-3 text-xs sm:text-sm text-[#082216]/75 leading-relaxed border-t border-[#082216]/5 pt-3">
+          O SLFT possui uma camada de redundância tripla: se o mDNS e o Broadcast UDP forem bloqueados pelo roteador, o aplicativo oferece conexão via leitura de QR Code direto ou conexão manual por IP:Porta com varredura de sub-rede ativa (Subnet Sweep).
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="border-t border-[#082216]/10 bg-[#FAF9F5] py-12 px-4 sm:px-6 lg:px-8 text-xs text-[#082216]/60">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-3">
+        <div class="w-6 h-6 rounded bg-[#082216] text-[#10B981] flex items-center justify-center font-mono font-bold text-[10px]">
+          SLFT
+        </div>
+        <span>Secure LAN File Transfer — Protocolo Aberto de Transferência P2P</span>
+      </div>
+
+      <div class="flex items-center gap-6 font-mono text-[11px]">
+        <span>X25519 • ChaCha20-Poly1305</span>
+        <span class="text-[#082216]/30">|</span>
+        <span>Zero-Metadata Verified</span>
+        <span class="text-[#082216]/30">|</span>
+        <a href="#hero" class="hover:text-[#082216] transition-colors">Voltar ao topo ↑</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // 1. Tab Switcher Logic
+    function switchTab(tab) {
+      const cliView = document.getElementById('view-cli');
+      const guiView = document.getElementById('view-gui');
+      const btnCli = document.getElementById('tab-btn-cli');
+      const btnGui = document.getElementById('tab-btn-gui');
+
+      if (tab === 'cli') {
+        cliView.classList.remove('hidden');
+        guiView.classList.add('hidden');
+        btnCli.className = 'px-4 py-1.5 text-xs font-medium rounded-sm bg-[#082216] text-white transition-all shadow-xs';
+        btnGui.className = 'px-4 py-1.5 text-xs font-medium rounded-sm text-[#082216]/70 hover:text-[#082216] transition-all';
+      } else {
+        cliView.classList.add('hidden');
+        guiView.classList.remove('hidden');
+        btnGui.className = 'px-4 py-1.5 text-xs font-medium rounded-sm bg-[#082216] text-white transition-all shadow-xs';
+        btnCli.className = 'px-4 py-1.5 text-xs font-medium rounded-sm text-[#082216]/70 hover:text-[#082216] transition-all';
+      }
+    }
+
+    // 1.1 OS Selector for CLI Command
+    function setCliOs(os) {
+      const btnWin = document.getElementById('os-btn-win');
+      const btnNix = document.getElementById('os-btn-nix');
+      const cmdText = document.getElementById('cli-cmd-text');
+      const promptSymbol = document.getElementById('cli-prompt-symbol');
+      const osLabel = document.getElementById('os-label');
+
+      if (os === 'win') {
+        btnWin.className = 'font-bold text-[#082216] hover:text-[#082216] transition-colors';
+        btnNix.className = 'text-[#082216]/60 hover:text-[#082216] transition-colors';
+        cmdText.innerText = 'irm https://slft.dev/install.ps1 | iex';
+        promptSymbol.innerText = 'PS>';
+        osLabel.innerText = 'Windows';
+      } else {
+        btnNix.className = 'font-bold text-[#082216] hover:text-[#082216] transition-colors';
+        btnWin.className = 'text-[#082216]/60 hover:text-[#082216] transition-colors';
+        cmdText.innerText = 'curl -sSL https://slft.dev/install.sh | sh';
+        promptSymbol.innerText = '$';
+        osLabel.innerText = 'Linux / macOS';
+      }
+    }
+
+    // 2. Robust Cross-Context 1-Click Copy Engine (works in file://, http://, https://)
+    function copyTextToClipboard(text, onDone) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(onDone).catch(() => {
+          fallbackCopyText(text, onDone);
+        });
+      } else {
+        fallbackCopyText(text, onDone);
+      }
+    }
+
+    function fallbackCopyText(text, onDone) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        if (onDone) onDone();
+      } catch (e) {
+        prompt("Copie o comando manualmente:", text);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    function copyCliCommand() {
+      const cmdText = document.getElementById('cli-cmd-text').innerText.trim();
+      const btn = document.getElementById('copy-btn');
+      copyTextToClipboard(cmdText, () => {
+        btn.innerHTML = '<span class="text-[#10B981] font-mono text-[10px] font-bold">COPIADO!</span>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+        }, 2000);
+      });
+    }
+
+    function copyCustom(text) {
+      copyTextToClipboard(text, () => {
+        alert('Comando copiado para a área de transferência:\n' + text);
+      });
+    }
+
+    // 3. Interactive Benchmark Calculation
+    function setBenchmarkSize(mb, label) {
+      // Update pills active state
+      document.querySelectorAll('.size-pill').forEach(btn => {
+        btn.className = 'size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-white text-[#082216] border border-[#082216]/15 hover:border-[#082216] transition-all';
+      });
+      const activeBtn = document.getElementById('btn-size-' + mb);
+      if (activeBtn) {
+        activeBtn.className = 'size-pill px-4 py-2 rounded-md text-xs font-mono font-medium bg-[#082216] text-white border border-[#082216] transition-all';
+      }
+
+      // Calculations: SLFT ~112 MB/s, Cloud ~10 MB/s (x2 for upload+download)
+      const slftSec = (mb / 112.0).toFixed(2);
+      const cloudSec = ((mb / 10.0) * 2.0).toFixed(1);
+
+      const slftDisplay = slftSec < 1 ? `${(slftSec * 1000).toFixed(0)} milissegundos` : `${slftSec} segundos`;
+      const cloudDisplay = cloudSec >= 60 ? `${(cloudSec / 60).toFixed(1)} minutos` : `${cloudSec} segundos`;
+
+      document.getElementById('slft-time-display').innerText = slftDisplay;
+      document.getElementById('cloud-time-display').innerText = cloudDisplay;
+    }
+
+    // 4. FAQ Accordion Toggle
+    function toggleFaq(id) {
+      const body = document.getElementById('faq-body-' + id);
+      const icon = document.getElementById('faq-icon-' + id);
+      if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        icon.innerText = '−';
+      } else {
+        body.classList.add('hidden');
+        icon.innerText = '+';
+      }
+    }
+
+    // 5. Scroll Reveal Intersection Observer
+    document.addEventListener('DOMContentLoaded', () => {
+      const reveals = document.querySelectorAll('.reveal');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      }, {
+        threshold: 0.12,
+        rootMargin: '0px 0px -40px 0px'
+      });
+
+      reveals.forEach(el => observer.observe(el));
+    });
+  </script>
+</body>
+</html>
