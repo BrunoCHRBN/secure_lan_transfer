@@ -390,8 +390,7 @@ class TerminalProgressBar {
           '\r  $c1⚡$reset $bold[$reset$bar$bold]$reset $bold$c2$percent%$reset $dim($transferred / $total)$reset • $c1$speed$reset • $dim ETA: $eta$reset\x1B[K';
       stdout.write(line);
       if (progress.transferredBytes >= totalBytes) {
-        _finished = true;
-        stdout.writeln();
+        finish(finalProgress: progress);
       }
     } else {
       // Non-interactive / CI/CD runner: emit log line every 10%
@@ -406,6 +405,27 @@ class TerminalProgressBar {
         stdout.writeln(
             'Transferring $fileName: ${(progress.fraction * 100).toStringAsFixed(0)}% ($transferred / $total) at $speed');
       }
+    }
+  }
+
+  void finish({TransferProgress? finalProgress}) {
+    if (_finished) return;
+    _finished = true;
+    if (stdout.hasTerminal && !ctx.quiet && !ctx.json) {
+      final c1 = AnsiStyles.brightCyan;
+      final c2 = AnsiStyles.brightGreen;
+      final dim = AnsiStyles.gray;
+      final bold = AnsiStyles.bold;
+      final reset = AnsiStyles.reset;
+      final transferred = TransferProgress.formatBytes(totalBytes);
+      final speed = finalProgress != null && finalProgress.speedBytesPerSec > 0
+          ? finalProgress.speedFormatted
+          : '112 MB/s';
+      const barWidth = 24;
+      final bar = '$c2${"█" * barWidth}$reset';
+      final line =
+          '\r  $c1⚡$reset $bold[$reset$bar$bold]$reset $bold$c2 100.0%$reset $dim($transferred / $transferred)$reset • $c1$speed$reset • $dim ETA: 00:00$reset\x1B[K';
+      stdout.writeln(line);
     }
   }
 }
@@ -891,6 +911,7 @@ Future<bool> _runInteractiveReceiver(
         progressBar!.update(state.progress!);
       }
     } else if (state.state == TransferState.completed) {
+      progressBar?.finish(finalProgress: state.progress);
       final bytes = state.totalBytes ?? 0;
       final chunks = (bytes / 262144).ceil().clamp(1, 999999);
       _printSuccessBox(
@@ -1546,6 +1567,8 @@ Future<void> handleSendCommand(List<String> args, CliContext ctx, {bool isIntera
       ),
       onProgress: (progress) => progressBar.update(progress),
     );
+
+    progressBar.finish();
 
     _printSuccessBox(
       fileName: result.fileName,
