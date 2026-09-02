@@ -817,24 +817,63 @@ Future<void> _interactiveSendFlow(CliContext ctx) async {
   }
 }
 
-Future<bool> _runInteractiveReceiver(int port, int timeoutSec, CliContext ctx) async {
+Directory _getDefaultDownloadDirectory() {
+  final userProfile = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+  if (userProfile != null) {
+    final downloads = Directory('$userProfile\\Downloads');
+    if (downloads.existsSync()) return downloads;
+    final downloadsUnix = Directory('$userProfile/Downloads');
+    if (downloadsUnix.existsSync()) return downloadsUnix;
+  }
+  return Directory.current;
+}
+
+Future<bool> _runInteractiveReceiver(
+  int port,
+  int timeoutSec,
+  CliContext ctx, {
+  Directory? downloadDir,
+  bool requireSasConfirmation = true,
+}) async {
+  final targetDir = downloadDir ?? _getDefaultDownloadDirectory();
   final sessionManager = SessionManager(
     options: SessionManagerOptions(
       defaultPort: port,
       autoAcceptInbound: true,
-      autoVerifySas: true,
-      downloadDirectory: Directory.current,
+      autoVerifySas: !requireSasConfirmation,
+      downloadDirectory: targetDir,
     ),
   );
 
   final completer = Completer<bool>();
   TerminalProgressBar? progressBar;
 
-  final sasSub = sessionManager.sasRequestsStream.listen((req) {
-    req.confirm();
+  final sasSub = sessionManager.sasRequestsStream.listen((req) async {
+    if (!requireSasConfirmation) {
+      req.confirm();
+      return;
+    }
+    final confirmed = await promptSasVerification(
+      req.sasCode,
+      req.remoteAddress,
+      ctx,
+      autoVerify: false,
+    );
+    if (confirmed) {
+      req.confirm();
+    } else {
+      req.reject();
+    }
   });
 
   final propSub = sessionManager.inboundProposalsStream.listen((prop) {
+    final hasAnsi = stdout.hasTerminal;
+    final c1 = hasAnsi ? AnsiStyles.brightCyan : '';
+    final bold = hasAnsi ? AnsiStyles.bold : '';
+    final reset = hasAnsi ? AnsiStyles.reset : '';
+    final dim = hasAnsi ? AnsiStyles.gray : '';
+    stdout.writeln('\n  $c1$bold⚡ DISPOSITIVO CONECTADO: ${prop.remoteAddress}:${prop.remotePort}$reset');
+    stdout.writeln('  $dim Negociando chaves de sessão efêmeras X25519...$reset\n');
     prop.accept();
   });
 
@@ -903,6 +942,8 @@ Future<bool> _runInteractiveReceiver(int port, int timeoutSec, CliContext ctx) a
 
 Future<void> _interactiveReceiveFlow(CliContext ctx) async {
   var timeoutSec = 45;
+  var downloadDir = _getDefaultDownloadDirectory();
+
   while (true) {
     clearScreen(ctx);
     final localIps = await getLocalIpsDescription();
@@ -919,6 +960,7 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
     final yellow = hasAnsi ? AnsiStyles.brightYellow : '';
     final dim = hasAnsi ? AnsiStyles.gray : '';
     final reset = hasAnsi ? AnsiStyles.reset : '';
+    final white = hasAnsi ? AnsiStyles.white : '';
 
     stdout.writeln('  $c2┌─────────────────────────────────────────────────────────────┐$reset');
     stdout.writeln('  $c2│$reset  $bold📥 RECEPTOR DE ARQUIVOS CRIPTOGRAFADOS (LISTENER)$reset');
@@ -927,17 +969,36 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
     stdout.writeln('  $c2│$reset     $bold$c1$localIps$reset');
     stdout.writeln('  $c2│$reset');
     stdout.writeln('  $c2│$reset  $dim📂 Pasta de destino onde os arquivos serão salvos:$reset');
-    stdout.writeln('  $c2│$reset     $bold${Directory.current.path}$reset');
+    stdout.writeln('  $c2│$reset     $bold$white${downloadDir.path}$reset');
     stdout.writeln('  $c2└─────────────────────────────────────────────────────────────┘$reset');
 
-    stdout.write('\n  $bold» Porta de escuta [Enter=42385, 0=Voltar ao Menu]:$reset ');
-    final inputPort = stdin.readLineSync()?.trim().toLowerCase();
-    if (inputPort == '0' || inputPort == 'b' || inputPort == 'voltar' || inputPort == 'back' || inputPort == 'q' || inputPort == 'cancel') {
+    stdout.writeln('\n  $c1[d]$reset 📂 Alterar pasta de destino');
+    stdout.write('  $bold» Porta [Enter=42385, 0=Voltar]:$reset ');
+    final inputChoice = stdin.readLineSync()?.trim().toLowerCase();
+    if (inputChoice == '0' || inputChoice == 'b' || inputChoice == 'voltar' || inputChoice == 'back' || inputChoice == 'q' || inputChoice == 'cancel') {
       return;
     }
+
+    if (inputChoice == 'd' || inputChoice == 'dir' || inputChoice == 'pasta') {
+      stdout.write('  $bold Digite o caminho da nova pasta de destino:$reset ');
+      final customPath = stdin.readLineSync()?.trim();
+      if (customPath != null && customPath.isNotEmpty) {
+        final d = Directory(customPath.replaceAll('"', '').trim());
+        if (!d.existsSync()) {
+          try {
+            d.createSync(recursive: true);
+          } catch (_) {}
+        }
+        if (d.existsSync()) {
+          downloadDir = d;
+        }
+      }
+      continue;
+    }
+
     int port = 42385;
-    if (inputPort != null && inputPort.isNotEmpty) {
-      port = int.tryParse(inputPort) ?? 42385;
+    if (inputChoice != null && inputChoice.isNotEmpty) {
+      port = int.tryParse(inputChoice) ?? 42385;
     }
 
     final bestIp = await NetworkUtils.getBestLocalIp();
@@ -954,13 +1015,20 @@ Future<void> _interactiveReceiveFlow(CliContext ctx) async {
     stdout.writeln('  $c1│$reset  $bold📷 ESCANEIE COM O APP MOBILE PARA CONECTAR$reset');
     stdout.writeln('  $c1├─────────────────────────────────────────────────────────────┤$reset');
     stdout.writeln('  $c1│$reset  $dim URI de Conexão:$reset  $bold$c2$qrUri$reset');
+    stdout.writeln('  $c1│$reset  $dim Pasta Destino:$reset   $white${downloadDir.path}$reset');
     stdout.writeln('  $c1└─────────────────────────────────────────────────────────────┘$reset\n');
     stdout.write(renderTerminalQrCode(qrUri));
 
     stdout.writeln('\n  $c2📡 Receptor ativo! Aguardando conexões por até ${timeoutSec}s...$reset');
     stdout.writeln('  $dim Abra o app no celular e mire a câmera no QR Code acima.$reset\n');
 
-    final received = await _runInteractiveReceiver(port, timeoutSec, ctx);
+    final received = await _runInteractiveReceiver(
+      port,
+      timeoutSec,
+      ctx,
+      downloadDir: downloadDir,
+      requireSasConfirmation: true,
+    );
 
     if (received) {
       _promptReturnToMenu('Pressione [Enter] para voltar ao menu principal...');
@@ -994,6 +1062,7 @@ Future<void> _interactiveQrConnectFlow(CliContext ctx) async {
   final bestIp = await NetworkUtils.getBestLocalIp();
   const port = 42385;
   final qrUri = 'slft://$bestIp:$port';
+  final downloadDir = _getDefaultDownloadDirectory();
 
   printCyberBanner(
     mode: 'QR CODE » Scan to Connect',
@@ -1014,6 +1083,7 @@ Future<void> _interactiveQrConnectFlow(CliContext ctx) async {
   stdout.writeln('  $c1│$reset  $dim Abra o app no celular, toque em$reset $bold$white[Ler QR]$reset $dim e aponte aqui:$reset');
   stdout.writeln('  $c1├─────────────────────────────────────────────────────────────┤$reset');
   stdout.writeln('  $c1│$reset  $dim Endereço URI:$reset $bold$c2$qrUri$reset');
+  stdout.writeln('  $c1│$reset  $dim Pasta Destino:$reset $white${downloadDir.path}$reset');
   stdout.writeln('  $c1└─────────────────────────────────────────────────────────────┘$reset\n');
 
   stdout.write(renderTerminalQrCode(qrUri));
@@ -1021,7 +1091,13 @@ Future<void> _interactiveQrConnectFlow(CliContext ctx) async {
   stdout.writeln('\n  $c2📡 Receptor aberto na porta $port! Aguardando escaneamento (60s)...$reset');
   stdout.writeln('  $dim Pressione Ctrl+C para cancelar a qualquer momento.$reset\n');
 
-  final received = await _runInteractiveReceiver(port, 60, ctx);
+  final received = await _runInteractiveReceiver(
+    port,
+    60,
+    ctx,
+    downloadDir: downloadDir,
+    requireSasConfirmation: true,
+  );
   if (received) {
     _promptReturnToMenu('Pressione [Enter] para voltar ao menu principal...');
   } else {
