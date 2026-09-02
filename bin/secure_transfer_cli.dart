@@ -866,8 +866,12 @@ Future<bool> _runInteractiveReceiver(int port, int timeoutSec, CliContext ctx) a
       ctx.logInfo('  📁 Arquivo salvo em: ${state.committedFilePath}');
       if (!completer.isCompleted) completer.complete(true);
     } else if (state.state == TransferState.error) {
-      _printErrorBox('Erro na transferência', state.error?.message ?? 'Falha na conexão');
-      if (!completer.isCompleted) completer.complete(false);
+      if (state.error?.message.contains('Socket closed prematurely') == true) {
+        ctx.logVerbose('Probe de rede descartado.');
+      } else {
+        _printErrorBox('Erro na transferência', state.error?.message ?? 'Falha na conexão');
+        if (!completer.isCompleted) completer.complete(false);
+      }
     }
   });
 

@@ -254,6 +254,13 @@ class SessionManager {
       );
     } catch (e, st) {
       if (stateMachine.currentState.state != TransferState.cancelled) {
+        // If the socket closed before handshake (e.g. discovery sweep port probe),
+        // reset to idle so the server remains ready to accept real incoming transfers.
+        if (e is HandshakeException && e.message.contains('Socket closed prematurely')) {
+          stateMachine.reset(role: TransferRole.receiver);
+          return;
+        }
+
         final SessionErrorCode errorCode;
         if (e is TimeoutException) {
           errorCode = SessionErrorCode.connectionTimeout;
